@@ -8,7 +8,7 @@ async function Redirect({ params }: { params: Promise<{ short_code: string }> })
     let url: string | null = null;
 
     try {
-        const res = await fetch(`http://localhost:8000/app/links/${code}/`)
+        const res = await fetch(`${process.env.BACKEND_URL}${code}/`)
 
 
         if (res.ok) {

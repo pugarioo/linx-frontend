@@ -5,10 +5,8 @@ import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import { useState } from "react"
 import { Spinner } from "./spinner"
+import { requestlink } from "@/app/actions"
 
-interface ResponseData {
-    short_code: string;
-}
 
 export default function LinkInput() {
     const [generatedUrl, setGeneratedUrl] = useState<string>("generated link will appear here");
@@ -25,30 +23,24 @@ export default function LinkInput() {
         try {
             setIsGenerating(true);
             setErrorMsg("");
-            const res = await fetch('http://localhost:8000/app/links/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ "orig_url": inputUrl }),
-            })
 
-            if (!res.ok) {
-                throw new Error(`Error: ${res.status} ${res.statusText}`);
+            const res = requestlink(inputUrl)
+
+            if ((await res).success) {
+                setGeneratedUrl((await res).url!)
             }
-
-            const data :ResponseData = await res.json()
-
-            setGeneratedUrl(`http://localhost:3000/${data.short_code}`);
+            else {
+                setErrorMsg((await res).error!)
+            }
         }
-        catch (error) { 
+        catch (error) {
             console.error("Error generating short link:", error);
             setErrorMsg("Failed to generate short link. Please try again.");
         }
         finally {
             setIsGenerating(false);
         }
-        
+
     }
 
     function copyToClipboard() {
