@@ -39,7 +39,7 @@ export default function LinkInput() {
 
             const data :ResponseData = await res.json()
 
-            setGeneratedUrl(`http://localhost:8000/${data.short_code}`);
+            setGeneratedUrl(`http://localhost:3000/${data.short_code}`);
         }
         catch (error) { 
             console.error("Error generating short link:", error);
