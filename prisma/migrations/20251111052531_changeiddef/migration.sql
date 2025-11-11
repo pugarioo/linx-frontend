@@ -1,0 +1,8 @@
+-- DropForeignKey
+ALTER TABLE "Link" DROP CONSTRAINT "Link_userID_fkey";
+
+-- AlterTable
+ALTER TABLE "Link" ALTER COLUMN "userID" DROP NOT NULL;
+
+-- AddForeignKey
+ALTER TABLE "Link" ADD CONSTRAINT "Link_userID_fkey" FOREIGN KEY ("userID") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;

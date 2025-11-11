@@ -1,36 +1,20 @@
 import { redirect, notFound } from 'next/navigation'
+import { get_orig_link, update_clicks } from '../actions';
 
 async function Redirect({ params }: { params: Promise<{ short_code: string }> }) {
 
     const code = (await params).short_code
     console.log("Redirecting for code:", code);
 
-    let url: string | null = null;
 
-    try {
-        const res = await fetch(`${process.env.BACKEND_URL}${code}/`)
+    const res = await get_orig_link(code)
 
-
-        if (res.ok) {
-            const data = await res.json();
-            url = data.orig_url
-        }
-        else {
-            notFound()
-        }
-
-    }
-    catch (error) {
-        console.error('Error fetching the original URL:', error);
-        notFound()
-    }
-
-    if (url) {
-        console.log("Fetched original URL:", url);
-        redirect(url)
+    if (res.success === true && res.url) {
+        console.log("Fetched original URL:", res.url);
+        await update_clicks(code)
+        redirect(res.url)
     }
     else {
-        console.error('Original URL not found');
         notFound()
     }
 

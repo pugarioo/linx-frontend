@@ -1,8 +1,9 @@
 'use server'
 
-interface ResponseData {
-    short_code: string;
-}
+import { PrismaClient } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
+
+const prisma = new PrismaClient()
 
 interface ActionResponse {
     success: boolean,
@@ -11,36 +12,95 @@ interface ActionResponse {
 }
 
 export async function requestlink(inputUrl: string): Promise<ActionResponse> {
+    const pageDomain = process.env.PAGE_DOMAIN || 'http://localhost:3000'
 
-    const backendURL = process.env.BACKEND_URL
-    const page = process.env.PAGE_DOMAIN
+    while (true) {
+        const generated_code = generate_code()
+        try {
+            await prisma.link.create({
+                data: {
+                    orig_link: inputUrl,
+                    short_code: generated_code
+                },
+                select: {
+                    short_code : true, 
+                }
+            })
+            
+            return {
+                success: true,
+                url: `${pageDomain}/${generated_code}`,
+            }
+            
+        }
+        catch(err) {
 
-    try {
-        const res = await fetch(`${backendURL}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
+            if (err instanceof PrismaClientKnownRequestError && err.code === 'P2002'){
+                continue
+            }
+            console.log(`Error generating link: ${err}`)
+            return {
+                success: false,
+                error: "There's an error generating the link, please try again"
+            }
+        }
+
+    }
+}
+
+export async function get_orig_link(short_code: string): Promise<ActionResponse> {
+    let retries = 3
+
+    while (retries > 0 ) {
+        try {
+            const link = await prisma.link.findUniqueOrThrow({
+                where: {
+                    short_code: short_code
+                },
+                select: {
+                    orig_link: true,
+                    clicks: true
+                }
+            })
+
+            return {
+                success: true,
+                url: link.orig_link
+            }
+            
+        }
+        catch (err) {
+            if (!(err instanceof PrismaClientKnownRequestError && err.code === 'P2025')) {
+                retries--
+                continue
+            }
+            return {
+                success: false,
+                error: 'Link does not exist'
+            }
+        }
+    }
+
+    return {
+        success: false,
+        error: 'Link does not exist'
+    }
+}
+
+export async function update_clicks(short_code : string) {
+    await prisma.link.update({
+        where: {
+            short_code: short_code
+        },
+        data: {
+            clicks: {
+                increment: 1
             },
-            body: JSON.stringify({ "orig_url": inputUrl }),
-        })
-
-        if (!res.ok) {
-            throw new Error(`Error: ${res.status} ${res.statusText}`);
+            last_clicked: new Date()
         }
+    })
+}
 
-        const data: ResponseData = await res.json()
-
-        return {
-            success: true,
-            url: `${page}${data.short_code}`
-        }
-    }
-    catch (error) {
-        console.error("Error generating short link:", error);
-        return {
-            success: false,
-            error: "Failed to generate short link. Please try again."
-        }
-    }
-
+function generate_code () {
+    return (Math.random() + 1).toString(36).substring(2, 8)
 }
